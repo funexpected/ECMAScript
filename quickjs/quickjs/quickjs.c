@@ -179,6 +179,7 @@ enum {
     JS_CLASS_ASYNC_FROM_SYNC_ITERATOR,  /* u.async_from_sync_iterator_data */
     JS_CLASS_ASYNC_GENERATOR_FUNCTION,  /* u.func */
     JS_CLASS_ASYNC_GENERATOR,   /* u.async_generator_data */
+    JS_CLASS_VECTOR2,           /* u.vector2 */
 
     JS_CLASS_INIT_COUNT, /* last entry for predefined classes */
 };
@@ -681,6 +682,17 @@ typedef struct JSAsyncFunctionData {
     JSAsyncFunctionState func_state;
 } JSAsyncFunctionData;
 
+typedef struct JSVector2Data {
+    double x;
+    double y;
+} JSVector2Data;
+
+typedef struct JSVector2 {
+    JSRefCountHeader header;
+    struct JSVector2 *next;
+    JSVector2Data data;
+} JSVector2;
+
 typedef enum {
    /* binary operators */
    JS_OVOP_ADD,
@@ -901,6 +913,7 @@ struct JSObject {
         struct JSAsyncFunctionData *async_function_data; /* JS_CLASS_ASYNC_FUNCTION_RESOLVE, JS_CLASS_ASYNC_FUNCTION_REJECT */
         struct JSAsyncFromSyncIteratorData *async_from_sync_iterator_data; /* JS_CLASS_ASYNC_FROM_SYNC_ITERATOR */
         struct JSAsyncGeneratorData *async_generator_data; /* JS_CLASS_ASYNC_GENERATOR */
+        struct JSVector2 *vector2; /* JS_CLASS_VECTOR2 */
         struct { /* JS_CLASS_BYTECODE_FUNCTION: 12/24 bytes */
             /* also used by JS_CLASS_GENERATOR_FUNCTION, JS_CLASS_ASYNC_FUNCTION and JS_CLASS_ASYNC_GENERATOR_FUNCTION */
             struct JSFunctionBytecode *function_bytecode;
@@ -1093,6 +1106,8 @@ static JSValue js_regexp_constructor_internal(JSContext *ctx, JSValueConst ctor,
 static void gc_decref(JSRuntime *rt);
 static int JS_NewClass1(JSRuntime *rt, JSClassID class_id,
                         const JSClassDef *class_def, JSAtom name);
+
+static void JS_FreeVector2(JSRuntime *rt, JSVector2 *p);
 
 typedef enum JSStrictEqModeEnum {
     JS_EQ_STRICT,
@@ -2165,6 +2180,7 @@ JSContext *JS_NewContext(JSRuntime *rt)
     JS_AddIntrinsicMapSet(ctx);
     JS_AddIntrinsicTypedArrays(ctx);
     JS_AddIntrinsicPromise(ctx);
+    JS_AddIntrinsicGodotPrimitives(ctx);
 #ifdef CONFIG_BIGNUM
     JS_AddIntrinsicBigInt(ctx);
 #endif
@@ -5520,6 +5536,15 @@ void __JS_FreeValueRT(JSRuntime *rt, JSValue v)
         }
         break;
 #endif
+    case JS_TAG_VECTOR2:
+        {
+            //printf("clearing vec\n");
+            JSVector2 *p = JS_VALUE_GET_PTR(v);
+            JS_FreeVector2(rt, p);
+            // JSVector2 *vec = JS_VALUE_GET_PTR(v);
+            // js_free_rt(rt, vec);
+        } 
+        break;
     case JS_TAG_SYMBOL:
         {
             JSAtomStruct *p = JS_VALUE_GET_PTR(v);
@@ -6865,6 +6890,9 @@ static JSValueConst JS_GetPrototypePrimitive(JSContext *ctx, JSValueConst val)
     case JS_TAG_INT:
     case JS_TAG_FLOAT64:
         val = ctx->class_proto[JS_CLASS_NUMBER];
+        break;
+    case JS_TAG_VECTOR2:
+        val = ctx->class_proto[JS_CLASS_VECTOR2];
         break;
     case JS_TAG_BOOL:
         val = ctx->class_proto[JS_CLASS_BOOLEAN];
@@ -47139,6 +47167,7 @@ static JSClassShortDef const js_async_class_def[] = {
     { JS_ATOM_AsyncGenerator, js_async_generator_finalizer, js_async_generator_mark },  /* JS_CLASS_ASYNC_GENERATOR */
 };
 
+
 void JS_AddIntrinsicPromise(JSContext *ctx)
 {
     JSRuntime *rt = ctx->rt;
@@ -47224,6 +47253,199 @@ void JS_AddIntrinsicPromise(JSContext *ctx)
     JS_FreeValue(ctx, obj1);
 }
 
+/* Godot Primitives */
+
+static JSVector2 *js_vector2_pool = NULL;
+static pthread_mutex_t js_vector2_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+JSValue JS_NewVector2(JSContext *ctx, double x, double y) {
+    pthread_mutex_lock(&js_vector2_mutex);
+    if (js_vector2_pool == NULL) {
+        js_vector2_pool = js_malloc(ctx, sizeof(JSVector2));
+        js_vector2_pool->next = NULL;
+    }
+    JSVector2 *vec = js_vector2_pool;
+    js_vector2_pool = vec->next;
+    pthread_mutex_unlock(&js_vector2_mutex);
+
+    // JSVector2 *vec = js_malloc(ctx, sizeof(JSVector2));
+    vec->header.ref_count = 1;
+    vec->data.x = x;
+    vec->data.y = y;
+    return JS_MKPTR(JS_TAG_VECTOR2, vec);
+}
+
+
+static void JS_FreeVector2(JSRuntime *rt, JSVector2 *p) {
+    pthread_mutex_lock(&js_vector2_mutex);
+    p->next = js_vector2_pool;
+    js_vector2_pool = p;
+    pthread_mutex_unlock(&js_vector2_mutex);
+
+    // js_free_rt(rt, p);
+}
+
+static JSValue js_vector2_constructor(JSContext *ctx, JSValueConst new_target,
+                                     int argc, JSValueConst *argv)
+{
+    // JSValue val, obj;
+    if (argc == 0) {
+        //printf("vec constructor no args\n");
+        return JS_NewVector2(ctx, 0.0, 0.0);
+    } else {
+        //printf("vec constructor 2 args args\n");
+        return JS_NewVector2(ctx, JS_VALUE_GET_FLOAT64(argv[0]), JS_VALUE_GET_FLOAT64(argv[1]));
+    }
+    // if (!JS_IsUndefined(new_target)) {
+    //     //printf("new target !undefined\n");
+    //     obj = js_create_from_ctor(ctx, new_target, JS_CLASS_VECTOR2);
+    //     if (!JS_IsException(obj))
+    //         JS_SetObjectData(ctx, obj, val);
+    //     return obj;
+    // } else {
+    //     //printf("newtarget undefined\n");
+    //     return val;
+    // }
+}
+
+static JSValue js_vector2_get_x(JSContext *ctx,
+                                         JSValueConst this_val)
+{
+    JSVector2 *v = JS_VALUE_GET_PTR(this_val);
+    return JS_NewFloat64(ctx, v->data.x);
+}
+
+static JSValue js_vector2_get_y(JSContext *ctx,
+                                         JSValueConst this_val)
+{
+    JSVector2 *v = JS_VALUE_GET_PTR(this_val);
+    return JS_NewFloat64(ctx, v->data.y);
+}
+
+//static 
+
+static inline JSVector2Data js_vector2_add(JSVector2Data a, JSVector2Data b) {
+    return (JSVector2Data) {
+        .x = a.x + b.x, 
+        .y = a.y + b.y
+    };
+}
+
+static inline JSVector2Data js_vector2_sub(JSVector2Data a, JSVector2Data b) {
+    return (JSVector2Data) {
+        .x = a.x - b.x, 
+        .y = a.y - b.y
+    };
+}
+
+static inline JSVector2Data js_vector2_mult(JSVector2Data a, JSVector2Data b) {
+    return (JSVector2Data) {
+        .x = a.x * b.x, 
+        .y = a.y * b.y
+    };
+}
+
+static inline JSVector2Data js_vector2_mult_scalar(JSVector2Data a, double b) {
+    return (JSVector2Data) {
+        .x = a.x * b, 
+        .y = a.y * b
+    };
+}
+
+static inline JSVector2Data js_vector2_div(JSVector2Data a, JSVector2Data b) {
+    return (JSVector2Data) {
+        .x = a.x / b.x, 
+        .y = a.y / b.x
+    };
+}
+
+static inline JSVector2Data js_vector2_div_scalar(JSVector2Data a, double b) {
+    return (JSVector2Data) {
+        .x = a.x / b, 
+        .y = a.y / b
+    };
+}
+
+// static inline double js_vector2_angle(JSVector2Data a) {
+//     return atan(a.y, a.x);
+// }
+
+static JSValue js_vector2_add_bind(JSContext *ctx, JSValueConst this_val,
+                                 int argc, JSValueConst *argv)
+{
+    JSVector2 *v0 = JS_VALUE_GET_PTR(this_val);
+    JSVector2 *v1 = JS_VALUE_GET_PTR(argv[0]);
+    JSVector2Data res = js_vector2_add(v0->data, v1->data);
+    return JS_NewVector2(ctx, res.x, res.y);
+}
+
+static JSClassShortDef const js_godot_class_def[] = {
+    { JS_ATOM_Vector2, NULL, NULL },                             /* JS_CLASS_OBJECT */
+};
+
+static const JSCFunctionListEntry js_vector2_proto_funcs[] = {
+    JS_CGETSET_DEF("x", js_vector2_get_x, NULL ),
+    JS_CGETSET_DEF("y", js_vector2_get_y, NULL ),
+    JS_CFUNC_DEF("add1", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add2", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add3", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add4", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add5", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add6", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add7", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add8", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add9", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add10", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add11", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add12", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add13", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add14", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add15", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add16", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add17", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add18", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add19", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add20", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add21", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add22", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add23", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add24", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add25", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add26", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add27", 2, js_vector2_add_bind ),
+    JS_CFUNC_DEF("add", 2, js_vector2_add_bind ),
+    // JS_CFUNC_DEF("toFixed", 1, js_number_toFixed ),
+    // JS_CFUNC_DEF("toPrecision", 1, js_number_toPrecision ),
+    // JS_CFUNC_MAGIC_DEF("toString", 1, js_number_toString, 0 ),
+    // JS_CFUNC_MAGIC_DEF("toLocaleString", 0, js_number_toString, 1 ),
+    // JS_CFUNC_DEF("valueOf", 0, js_number_valueOf ),
+};
+
+
+
+
+
+void JS_AddIntrinsicGodotPrimitives(JSContext *ctx) {
+    JSRuntime *rt;
+    JSValue vec_obj;
+    //JSAtomStruct *p;
+
+    rt = ctx->rt;
+
+    init_class_range(rt, js_godot_class_def, JS_CLASS_OBJECT,
+                         countof(js_godot_class_def));
+
+    /* Vector2 */
+    ctx->class_proto[JS_CLASS_VECTOR2] = JS_NewObjectProtoClass(ctx, ctx->class_proto[JS_CLASS_OBJECT],
+                                                               JS_CLASS_VECTOR2);
+    JS_SetObjectData(ctx, ctx->class_proto[JS_CLASS_NUMBER], JS_NewInt32(ctx, 0));
+    JS_SetPropertyFunctionList(ctx, ctx->class_proto[JS_CLASS_VECTOR2],
+                               js_vector2_proto_funcs,
+                               countof(js_vector2_proto_funcs));
+    vec_obj = JS_NewGlobalCConstructor(ctx, "Vector2", js_vector2_constructor, 2,
+                                          ctx->class_proto[JS_CLASS_VECTOR2]);
+    //JS_SetPropertyFunctionList(ctx, vec_obj, js_vector2_funcs, countof(js_number_funcs));
+}
 /* URI handling */
 
 static int string_get_hex(JSString *p, int k, int n) {

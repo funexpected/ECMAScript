@@ -32,15 +32,48 @@ if JS_ENGINE == 'quickjs':
 	import quickjs.builtin_binding_generator
 	quickjs.builtin_binding_generator.generate_builtin_bindings()
 	# build quickjs source
-	version = open('quickjs/quickjs/VERSION', 'r').read().split('\n')[0]
+	version = open('quickjs/quickjs/QUICKJS_VERSION', 'r').read().split('\n')[0]
 	env_module.Append(CPPDEFINES={"QUICKJS_CONFIG_VERSION": '"'+ version +'"'})
 	env_module.Append(CPPDEFINES=["CONFIG_BIGNUM"])
 	if env_module['target'] != 'release':
-		env_module.Append(CPPDEFINES={"DUMP_LEAKS": 1})
-		env_module.Append(CPPDEFINES={"QUICKJS_WITH_DEBUGGER": 1})
+		# env_module.Append(CPPDEFINES={"DUMP_LEAKS": 1})
+  
+		# this uncomenting this reduce performance twice in some cases
+		# env_module.Append(CPPDEFINES={"QUICKJS_WITH_DEBUGGER": 1})
+		pass
 	env_module.Append(CPPPATH=["quickjs/quickjs"])
 	env_module.add_source_files(env.modules_sources, 'quickjs/*.cpp')
-	env_module.add_source_files(env.modules_sources, 'quickjs/quickjs/*.c')
+	qjs = env_module.Clone()
+	qjs.Append(CPPFLAGS=[
+     	"-g",
+      	"-Wall",
+       	# "-MMD",
+        # "-MF", ".obj/quickjs.o.d",
+        "-Wextra",
+        "-Wno-sign-compare",
+        "-Wno-missing-field-initializers",
+        "-Wundef",
+        "-Wuninitialized",
+        "-Wunused",
+        "-Wno-unused-parameter",
+        "-Wwrite-strings",
+        "-Wchar-subscripts",
+        "-funsigned-char",
+        "-D_GNU_SOURCE",
+        "-DCONFIG_BIGNUM",
+        "-O2",
+        "-flto"
+    ])
+	qjs.add_source_files(env.modules_sources, [
+			"quickjs/quickjs/cutils.c",
+			"quickjs/quickjs/libbf.c",
+			"quickjs/quickjs/libregexp.c",
+			"quickjs/quickjs/libunicode.c",
+			"quickjs/quickjs/quickjs-debugger.c",
+			"quickjs/quickjs/quickjs.c",
+	])
+                             
+                             #'quickjs/quickjs/*.c')
 
 # Binding script to run at engine initializing
 with open("misc/godot.binding_script.gen.cpp", "w") as f:

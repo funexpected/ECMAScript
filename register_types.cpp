@@ -107,7 +107,7 @@ public:
 			DirAccess::remove_file_or_error(tmp_path);
 
 		} else {
-#if 0 // Disable compile to bytecode as it is not battle tested on all platform
+//#if 0 // Disable compile to bytecode as it is not battle tested on all platform
 			Error err;
 			String code = FileAccess::get_file_as_string(p_path, &err);
 			ERR_FAIL_COND(err != OK);
@@ -115,7 +115,7 @@ public:
 			Vector<uint8_t> file;
 			ERR_FAIL_COND(ECMAScriptLanguage::get_singleton()->get_main_binder()->compile_to_bytecode(code, p_path, file) != OK);
 			add_file(p_path.get_basename() + "." + extension + "b", file, true);
-#endif
+//#endif
 		}
 	}
 };

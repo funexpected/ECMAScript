@@ -66,7 +66,8 @@ typedef uint32_t JSAtom;
 
 enum {
     /* all tags with a reference count are negative */
-    JS_TAG_FIRST       = -11, /* first negative tag */
+    JS_TAG_FIRST       = -12, /* first negative tag */
+    JS_TAG_VECTOR2     = -12,
     JS_TAG_BIG_DECIMAL = -11,
     JS_TAG_BIG_INT     = -10,
     JS_TAG_BIG_FLOAT   = -9,
@@ -369,6 +370,8 @@ void JS_AddIntrinsicPromise(JSContext *ctx);
 void JS_AddIntrinsicBigInt(JSContext *ctx);
 void JS_AddIntrinsicBigFloat(JSContext *ctx);
 void JS_AddIntrinsicBigDecimal(JSContext *ctx);
+/* enable godot extention */
+void JS_AddIntrinsicGodotPrimitives(JSContext *ctx);
 /* enable operator overloading */
 void JS_AddIntrinsicOperators(JSContext *ctx);
 /* enable "use math" */
@@ -507,6 +510,9 @@ static js_force_inline JSValue JS_NewInt32(JSContext *ctx, int32_t val)
 {
     return JS_MKVAL(JS_TAG_INT, val);
 }
+
+
+
 
 static js_force_inline JSValue JS_NewCatchOffset(JSContext *ctx, int32_t val)
 {
@@ -687,6 +693,8 @@ int JS_ToFloat64(JSContext *ctx, double *pres, JSValueConst val);
 int JS_ToBigInt64(JSContext *ctx, int64_t *pres, JSValueConst val);
 /* same as JS_ToInt64() but allow BigInt */
 int JS_ToInt64Ext(JSContext *ctx, int64_t *pres, JSValueConst val);
+int JS_ToVector2(JSContext *ctx, double *resx, double *resy, JSValueConst val);
+JSValue JS_NewVector2(JSContext *ctx, double x, double y);
 
 JSValue JS_NewStringLen(JSContext *ctx, const char *str1, size_t len1);
 JSValue JS_NewString(JSContext *ctx, const char *str);

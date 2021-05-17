@@ -269,6 +269,11 @@ public:
 		JS_ToIndex(ctx, &i, p_val);
 		return i;
 	}
+	_FORCE_INLINE_ static Vector2 js_to_vector2(JSContext *ctx, const JSValueConst &p_val) {
+		Vector2 vec;
+		//JS_ToVector2(ctx, &vec.x, &vec.y, p_val);
+		return vec;
+	}
 	_FORCE_INLINE_ static JSValue to_js_number(JSContext *ctx, real_t p_val) {
 		return JS_NewFloat64(ctx, double(p_val));
 	}
