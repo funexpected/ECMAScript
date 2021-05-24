@@ -17,7 +17,7 @@
 #endif
 
 uint32_t QuickJSBinder::global_context_id = 0;
-uint64_t QuickJSBinder::global_transfer_id = 0;
+std::atomic<int> QuickJSBinder::global_transfer_id(0);
 HashMap<uint64_t, Variant> QuickJSBinder::transfer_deopot;
 Map<String, const char *> QuickJSBinder::class_remap;
 List<String> compiling_modules;
@@ -2322,7 +2322,7 @@ JSValue QuickJSBinder::godot_abandon_value(JSContext *ctx, JSValue this_val, int
 
 	uint64_t id = 0;
 	if (valid) {
-		id = atomic_increment(&global_transfer_id);
+		id = get_next_transfer_id();
 		GLOBAL_LOCK_FUNCTION
 		transfer_deopot.set(id, gd_value);
 	}

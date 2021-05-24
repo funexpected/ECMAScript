@@ -158,13 +158,14 @@ void QuickJSWorker::post_message_from_host(const Variant &p_message) {
 void QuickJSWorker::start(const String &p_path) {
 	ERR_FAIL_COND(running || thread != NULL);
 	entry_script = p_path;
-	thread = Thread::create(thread_main, this);
+	thread = memnew(Thread);
+	thread->start(thread_main, this);
 }
 
 void QuickJSWorker::stop() {
 	if (thread != NULL) {
 		running = false;
-		Thread::wait_to_finish(thread);
+		thread->wait_to_finish();
 		memdelete(thread);
 		thread = NULL;
 	}

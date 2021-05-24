@@ -31,7 +31,7 @@ class QuickJSBinder : public ECMAScriptBinder {
 
 protected:
 	static uint32_t global_context_id;
-	static uint64_t global_transfer_id;
+	static std::atomic<int> global_transfer_id;
 	JSRuntime *runtime;
 	JSContext *ctx;
 	JSMallocFunctions godot_allocator;
@@ -130,6 +130,7 @@ protected:
 	ModuleCache js_compile_module(JSContext *ctx, const String &p_code, const String &p_filename, ECMAscriptScriptError *r_error);
 	static Error js_evalute_module(JSContext *ctx, ModuleCache *p_module, ECMAscriptScriptError *r_error);
 	static int resource_module_initializer(JSContext *ctx, JSModuleDef *m);
+	static int get_next_transfer_id() { return global_transfer_id++; }
 
 	struct ClassBindData {
 		JSClassID class_id;
