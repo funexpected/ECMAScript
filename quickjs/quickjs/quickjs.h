@@ -221,6 +221,7 @@ typedef struct JSValue {
 #define JS_MKPTR(tag, p) (JSValue){ (JSValueUnion){ .ptr = p }, tag }
 
 #define JS_TAG_IS_FLOAT64(tag) ((unsigned)(tag) == JS_TAG_FLOAT64)
+#define JS_TAG_IS_INT(tag) ((unsigned)(tag) == JS_TAG_INT)
 
 #define JS_NAN (JSValue){ .u.float64 = JS_FLOAT64_NAN, JS_TAG_FLOAT64 }
 
@@ -501,6 +502,7 @@ int JS_NewClass(JSRuntime *rt, JSClassID class_id, const JSClassDef *class_def);
 int JS_IsRegisteredClass(JSRuntime *rt, JSClassID class_id);
 
 JSValue JS_NewVector2(JSContext *ctx, double x, double y);
+JSValue JS_NewRect2(JSContext *ctx, double position_x, double position_y, double end_x, double end_y);
 
 /* value handling */
 
