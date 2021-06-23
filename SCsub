@@ -5,6 +5,7 @@ Import('env')
 Import('env_modules')
 env_module = env_modules.Clone()
 JS_ENGINE = 'quickjs'
+BUILD_GODOT_INTRINSICS = True
 
 def open_file(path, mode):
 	if platform.python_version() > '3':
@@ -35,12 +36,16 @@ if JS_ENGINE == 'quickjs':
 	version = open('quickjs/quickjs/VERSION', 'r').read().split('\n')[0]
 	env_module.Append(CPPDEFINES={"QUICKJS_CONFIG_VERSION": '"'+ version +'"'})
 	env_module.Append(CPPDEFINES=["CONFIG_BIGNUM"])
+	if BUILD_GODOT_INTRINSICS:
+		env_module.Append(CPPDEFINES=["CONFIG_GODOT_INTRINSICS"])
 	if env_module['target'] != 'release':
 		env_module.Append(CPPDEFINES={"DUMP_LEAKS": 1})
 		env_module.Append(CPPDEFINES={"QUICKJS_WITH_DEBUGGER": 1})
 	env_module.Append(CPPPATH=["quickjs/quickjs"])
 	env_module.add_source_files(env.modules_sources, 'quickjs/*.cpp')
 	env_module.add_source_files(env.modules_sources, 'quickjs/quickjs/*.c')
+	if BUILD_GODOT_INTRINSICS:
+		env_module.add_source_files(env.modules_sources, 'godot_intrinsics/*.c')
 
 # Binding script to run at engine initializing
 with open("misc/godot.binding_script.gen.cpp", "w") as f:

@@ -249,9 +249,10 @@ DEF(SyntaxError, "SyntaxError")
 DEF(TypeError, "TypeError")
 DEF(URIError, "URIError")
 DEF(InternalError, "InternalError")
-/* godot primitives */
+#ifdef CONFIG_GODOT_INTRINSICS
 DEF(Vector2, "Vector2")
 DEF(Rect2, "Rect2")
+#endif
 /* private symbols */
 DEF(Private_brand, "<brand>")
 /* symbols */
