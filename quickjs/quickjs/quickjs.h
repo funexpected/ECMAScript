@@ -66,9 +66,13 @@ typedef uint32_t JSAtom;
 
 enum {
     /* all tags with a reference count are negative */
+#ifdef CONFIG_GODOT_INTRINSICS
     JS_TAG_FIRST       = -13, /* first negative tag */
     JS_TAG_RECT2       = -13,
     JS_TAG_VECTOR2     = -12,
+#else
+    JS_TAG_FIRST       = -11, /* first negative tag */
+#endif
     JS_TAG_BIG_DECIMAL = -11,
     JS_TAG_BIG_INT     = -10,
     JS_TAG_BIG_FLOAT   = -9,
@@ -311,6 +315,10 @@ static inline JS_BOOL JS_VALUE_IS_NAN(JSValue v)
 /* don't include the stack frames before this eval in the Error() backtraces */
 #define JS_EVAL_FLAG_BACKTRACE_BARRIER (1 << 6)
 
+#ifdef CONFIG_GODOT_INTRINSICS
+#include "godot_intrinsics/godot_intrinsic_types.h"
+#endif
+
 typedef JSValue JSCFunction(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 typedef JSValue JSCFunctionMagic(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic);
 typedef JSValue JSCFunctionData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic, JSValue *func_data);
@@ -500,9 +508,6 @@ typedef struct JSClassDef {
 JSClassID JS_NewClassID(JSClassID *pclass_id);
 int JS_NewClass(JSRuntime *rt, JSClassID class_id, const JSClassDef *class_def);
 int JS_IsRegisteredClass(JSRuntime *rt, JSClassID class_id);
-
-JSValue JS_NewVector2(JSContext *ctx, double x, double y);
-JSValue JS_NewRect2(JSContext *ctx, double position_x, double position_y, double end_x, double end_y);
 
 /* value handling */
 
@@ -711,8 +716,6 @@ static inline const char *JS_ToCString(JSContext *ctx, JSValueConst val1)
     return JS_ToCStringLen2(ctx, NULL, val1, 0);
 }
 void JS_FreeCString(JSContext *ctx, const char *ptr);
-
-JSValue JS_ToVector2(JSContext *ctx, JSValueConst val);
 
 JSValue JS_NewObjectProtoClass(JSContext *ctx, JSValueConst proto, JSClassID class_id);
 JSValue JS_NewObjectClass(JSContext *ctx, int class_id);

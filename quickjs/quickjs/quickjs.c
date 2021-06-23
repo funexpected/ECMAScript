@@ -179,11 +179,10 @@ enum {
     JS_CLASS_ASYNC_FROM_SYNC_ITERATOR,  /* u.async_from_sync_iterator_data */
     JS_CLASS_ASYNC_GENERATOR_FUNCTION,  /* u.func */
     JS_CLASS_ASYNC_GENERATOR,   /* u.async_generator_data */
-    
-    // Godot intrinsic types
+#ifdef CONFIG_GODOT_INTRINSICS
     JS_CLASS_VECTOR2,           /* u.vector2 */
     JS_CLASS_RECT2,             /* u.rect2 */
-
+#endif
     JS_CLASS_INIT_COUNT, /* last entry for predefined classes */
 };
 
@@ -685,29 +684,6 @@ typedef struct JSAsyncFunctionData {
     JSAsyncFunctionState func_state;
 } JSAsyncFunctionData;
 
-    JSRefCountHeader header; /* must come first */
-typedef struct JSVector2Data {
-    double x;
-    double y;
-} JSVector2Data;
-
-typedef struct JSVector2 {
-    JSRefCountHeader header;
-    struct JSVector2 *next;
-    JSVector2Data data;
-} JSVector2;
-
-typedef struct JSRect2Data {
-    JSVector2Data position;
-    JSVector2Data end;
-} JSRect2Data;
-
-typedef struct JSRect2 {
-    JSRefCountHeader header;
-    struct JSRect2 *next;
-    JSRect2Data data;
-} JSRect2;
-
 typedef enum {
    /* binary operators */
    JS_OVOP_ADD,
@@ -1123,11 +1099,6 @@ static JSValue js_regexp_constructor_internal(JSContext *ctx, JSValueConst ctor,
 static void gc_decref(JSRuntime *rt);
 static int JS_NewClass1(JSRuntime *rt, JSClassID class_id,
                         const JSClassDef *class_def, JSAtom name);
-
-static void JS_FreeVector2(JSRuntime *rt, JSVector2 *p);
-static void JS_FreeRect2(JSRuntime *rt, JSRect2 *p);
-
-
 typedef enum JSStrictEqModeEnum {
     JS_EQ_STRICT,
     JS_EQ_SAME_VALUE,
@@ -5555,6 +5526,7 @@ void __JS_FreeValueRT(JSRuntime *rt, JSValue v)
         }
         break;
 #endif
+#ifdef CONFIG_GODOT_INTRINSICS
     case JS_TAG_VECTOR2:
         {
              //printf("clearing vec\n");
@@ -5571,7 +5543,7 @@ void __JS_FreeValueRT(JSRuntime *rt, JSValue v)
             JS_FreeRect2(rt, p);
         } 
         break;
-
+#endif
     case JS_TAG_SYMBOL:
         {
             JSAtomStruct *p = JS_VALUE_GET_PTR(v);
@@ -11600,7 +11572,7 @@ JSValue JS_ToStringInternal(JSContext *ctx, JSValueConst val, BOOL is_ToProperty
     case JS_TAG_RECT2:
     {
         JSRect2 *r = JS_VALUE_GET_PTR(val);
-        snprintf(buf, sizeof(buf), "%.4lf, %.4lf, %.4lf, %.4lf", r->data.position.x, r->data.position.y, r->data.end.x, r->data.end.y);
+        snprintf(buf, sizeof(buf), "%.4lf, %.4lf, %.4lf, %.4lf", r->data.position.x, r->data.position.y, r->data.size.x, r->data.size.y);
         str = buf;
         goto new_string;
     }
@@ -11710,105 +11682,6 @@ static JSValue JS_ToQuotedString(JSContext *ctx, JSValueConst val1)
     JS_FreeValue(ctx, val);
     string_buffer_free(b);
     return JS_EXCEPTION;
-}
-
-JSValue JS_ToVector2(JSContext *ctx, JSValueConst val)
-{
-    uint32_t tag;
-    JSVector2 *v;
-    double x = 0;
-    double y = 0;
-    //const char *str;
-    //char buf[32];
-
-    tag = JS_VALUE_GET_NORM_TAG(val);
-    switch(tag) {
-    case JS_TAG_INT:
-        x = JS_VALUE_GET_INT(val);
-        y = x;
-        goto new_vector;
-    case JS_TAG_FLOAT64:
-        x = JS_VALUE_GET_FLOAT64(val);
-        y = x;
-        goto new_vector;
-    case JS_TAG_VECTOR2:
-        v = JS_VALUE_GET_PTR(val);
-        x = v->data.x;
-        y = v->data.y;
-        goto new_vector;
-    case JS_TAG_EXCEPTION:
-        return JS_EXCEPTION;
-    case JS_TAG_STRING: // fall through and return new vector2
-    case JS_TAG_BOOL:
-    case JS_TAG_NULL:
-    case JS_TAG_UNDEFINED:
-    case JS_TAG_OBJECT:
-    case JS_TAG_FUNCTION_BYTECODE:
-    case JS_TAG_SYMBOL:
-/*#ifdef CONFIG_BIGNUM
-    case JS_TAG_BIG_INT:
-        return ctx->rt->bigint_ops.to_string(ctx, val);
-    case JS_TAG_BIG_FLOAT:
-        return ctx->rt->bigfloat_ops.to_string(ctx, val);
-    case JS_TAG_BIG_DECIMAL:
-        return ctx->rt->bigdecimal_ops.to_string(ctx, val);
-#endif */
-    default:
-    new_vector:
-        return JS_NewVector2(ctx, x, y);
-    }
-}
-
-JSValue JS_ToRect2(JSContext *ctx, JSValueConst val)
-{
-    uint32_t tag;
-    double position_x = 0;
-    double position_y = 0;
-    double end_x = 0;
-    double end_y = 0;
-    JSRect2 *r;
-    //const char *str;
-    //char buf[32];
-
-    tag = JS_VALUE_GET_NORM_TAG(val);
-    switch(tag) {
-    case JS_TAG_INT:
-        position_x = JS_VALUE_GET_INT(val);
-        end_y = end_x = position_y = position_x;
-        goto new_rect;
-    case JS_TAG_FLOAT64:
-        position_x = JS_VALUE_GET_FLOAT64(val);
-        end_y = end_x = position_y = position_x;
-        goto new_rect;
-    case JS_TAG_RECT2:
-        r = JS_VALUE_GET_PTR(val);
-        position_x = r->data.position.x;
-        position_y = r->data.position.y;
-        end_x = r->data.end.x;
-        end_x = r->data.end.x;
-        goto new_rect;
-    case JS_TAG_EXCEPTION:
-        return JS_EXCEPTION;
-    case JS_TAG_VECTOR2: 
-    case JS_TAG_STRING: // fall through and return new rect2
-    case JS_TAG_BOOL:
-    case JS_TAG_NULL:
-    case JS_TAG_UNDEFINED:
-    case JS_TAG_OBJECT:
-    case JS_TAG_FUNCTION_BYTECODE:
-    case JS_TAG_SYMBOL:
-/*#ifdef CONFIG_BIGNUM
-    case JS_TAG_BIG_INT:
-        return ctx->rt->bigint_ops.to_string(ctx, val);
-    case JS_TAG_BIG_FLOAT:
-        return ctx->rt->bigfloat_ops.to_string(ctx, val);
-    case JS_TAG_BIG_DECIMAL:
-        return ctx->rt->bigdecimal_ops.to_string(ctx, val);
-#endif */
-    default:
-    new_rect:
-        return JS_NewRect2(ctx, position_x, position_y, end_x, end_y);
-    }
 }
 
 static __maybe_unused void JS_DumpObjectHeader(JSRuntime *rt)
@@ -47314,6 +47187,50 @@ static JSClassShortDef const js_async_class_def[] = {
     { JS_ATOM_AsyncGenerator, js_async_generator_finalizer, js_async_generator_mark },  /* JS_CLASS_ASYNC_GENERATOR */
 };
 
+#ifdef CONFIG_GODOT_INTRINSICS
+static JSClassShortDef const js_godot_class_def[] = {
+    { JS_ATOM_Vector2, NULL, NULL },
+    { JS_ATOM_Rect2, NULL, NULL }
+};
+
+static const JSCFunctionListEntry js_vector2_proto_funcs[] = {
+    JS_CGETSET_DEF("x", js_vector2_get_x, NULL ),
+    JS_CGETSET_DEF("y", js_vector2_get_y, NULL ),
+    JS_CFUNC_DEF("add", 2, js_vector2_add_bind ),
+};
+
+static const JSCFunctionListEntry js_rect2_proto_funcs[] = {
+    JS_CGETSET_DEF("position", js_rect2_get_position, NULL ),
+    JS_CGETSET_DEF("size", js_rect2_get_size, NULL ),
+    JS_CGETSET_DEF("end", js_rect2_get_end, NULL ),
+};
+
+void JS_AddIntrinsicGodotPrimitives(JSContext *ctx) {
+    JSRuntime *rt;
+    rt = ctx->rt;
+
+    init_class_range(rt, js_godot_class_def, JS_CLASS_VECTOR2,
+                        countof(js_godot_class_def));
+
+    /* Vector2 */
+    ctx->class_proto[JS_CLASS_VECTOR2] = JS_NewObjectProtoClass(ctx, ctx->class_proto[JS_CLASS_OBJECT], JS_CLASS_VECTOR2);
+    JS_SetPropertyFunctionList(ctx, ctx->class_proto[JS_CLASS_VECTOR2],
+                            js_vector2_proto_funcs,
+                            countof(js_vector2_proto_funcs));
+    JS_NewGlobalCConstructor(ctx, "Vector2", js_vector2_constructor, 2,
+                                        ctx->class_proto[JS_CLASS_VECTOR2]);
+
+    /* Rect2 */
+    ctx->class_proto[JS_CLASS_RECT2] = JS_NewObjectProtoClass(ctx, ctx->class_proto[JS_CLASS_OBJECT], JS_CLASS_RECT2);
+    JS_SetPropertyFunctionList(ctx, ctx->class_proto[JS_CLASS_RECT2],
+                            js_rect2_proto_funcs,
+                            countof(js_rect2_proto_funcs));
+    JS_NewGlobalCConstructor(ctx, "Rect2", js_rect2_constructor, 4,
+                                        ctx->class_proto[JS_CLASS_RECT2]);
+
+}
+#endif
+
 void JS_AddIntrinsicPromise(JSContext *ctx)
 {
     JSRuntime *rt = ctx->rt;
@@ -47397,251 +47314,6 @@ void JS_AddIntrinsicPromise(JSContext *ctx)
     JS_SetConstructor2(ctx, obj1, ctx->class_proto[JS_CLASS_ASYNC_GENERATOR_FUNCTION],
                        0, JS_PROP_CONFIGURABLE);
     JS_FreeValue(ctx, obj1);
-}
-
-/* Godot Primitives */
-#define GODOT_PRIMITIVE_VECTOR2 (0)
-#define GODOT_PRIMITIVE_RECT2 (1)
-#define GODOT_PRIMITIVES_COUNT (2)
-
-static void* js_godot_primitive_pools[GODOT_PRIMITIVES_COUNT] = {NULL, NULL};
-static pthread_mutex_t js_godot_primitive_mutexes[GODOT_PRIMITIVES_COUNT] = {PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER};
-
-JSValue JS_NewVector2(JSContext *ctx, double x, double y) {
-    JSVector2* pool = js_godot_primitive_pools[GODOT_PRIMITIVE_VECTOR2];
-    pthread_mutex_t* mut = &js_godot_primitive_mutexes[GODOT_PRIMITIVE_VECTOR2];
-
-    pthread_mutex_lock(mut);
-    if (pool == NULL) {
-        pool = js_malloc(ctx, sizeof(JSVector2));
-        pool->next = NULL;
-    }
-    JSVector2 *vec = pool;
-    pool = vec->next;
-    pthread_mutex_unlock(mut);
-
-    vec->header.ref_count = 1;
-    vec->data.x = x;
-    vec->data.y = y;
-    return JS_MKPTR(JS_TAG_VECTOR2, vec);
-}
-
-JSValue JS_NewRect2(JSContext *ctx, double position_x, double position_y, double end_x, double end_y) {
-    JSVector2* pool = js_godot_primitive_pools[GODOT_PRIMITIVE_RECT2];
-    pthread_mutex_t* mut = &js_godot_primitive_mutexes[GODOT_PRIMITIVE_RECT2];
-
-    pthread_mutex_lock(mut);
-    if (pool == NULL) {
-        pool = js_malloc(ctx, sizeof(JSRect2));
-        pool->next = NULL;
-    }
-    JSRect2 *rect = pool;
-    pool = rect->next;
-    pthread_mutex_unlock(mut);
-
-    rect->header.ref_count = 1;
-    rect->data.position.x = position_x;
-    rect->data.position.y = position_y;
-    rect->data.end.x = end_x;
-    rect->data.end.y = end_y;
-    return JS_MKPTR(JS_TAG_RECT2, rect);
-}
-
-static void JS_FreeVector2(JSRuntime *rt, JSVector2 *p) {
-    JSVector2* pool = js_godot_primitive_pools[GODOT_PRIMITIVE_VECTOR2];
-    pthread_mutex_t* mut = &js_godot_primitive_mutexes[GODOT_PRIMITIVE_VECTOR2];
-
-    pthread_mutex_lock(mut);
-    p->next = pool;
-    pool = p;
-    pthread_mutex_unlock(mut);
-}
-
-static void JS_FreeRect2(JSRuntime *rt, JSRect2 *p) {
-    JSVector2* pool = js_godot_primitive_pools[GODOT_PRIMITIVE_RECT2];
-    pthread_mutex_t* mut = &js_godot_primitive_mutexes[GODOT_PRIMITIVE_RECT2];
-
-    pthread_mutex_lock(mut);
-    p->next = pool;
-    pool = p;
-    pthread_mutex_unlock(mut);
-}
-
-static JSValue js_vector2_constructor(JSContext *ctx, JSValueConst new_target,
-                                    int argc, JSValueConst *argv)
-{
-    if (argc == 2) {
-        double args[2];
-
-        for (int i = 0; i < 2; ++i) {
-            uint32_t tag = JS_VALUE_GET_TAG(argv[i]);
-            if (JS_TAG_IS_FLOAT64(tag))
-                args[i] = JS_VALUE_GET_FLOAT64(argv[i]);
-            else if (JS_TAG_IS_INT(tag))
-                args[i] = JS_VALUE_GET_INT(argv[i]);
-        }
-
-        return JS_NewVector2(ctx, args[0], args[1]);
-    } else {
-        return JS_NewVector2(ctx, 0.0, 0.0);
-    }
-}
-
-static JSValue js_rect2_constructor(JSContext *ctx, JSValueConst new_target,
-                                    int argc, JSValueConst *argv)
-{
-    if (argc == 4) {
-        double args[4];
-
-        for (int i = 0; i < 4; ++i) {
-            uint32_t tag = JS_VALUE_GET_TAG(argv[i]);
-            if (JS_TAG_IS_FLOAT64(tag))
-                args[i] = JS_VALUE_GET_FLOAT64(argv[i]);
-            else if (JS_TAG_IS_INT(tag))
-                args[i] = JS_VALUE_GET_INT(argv[i]);
-        }
-
-        return JS_NewRect2(ctx, args[0], args[1], args[2], args[3]);
-    } else {
-        return JS_NewRect2(ctx, 0.0, 0.0, 0.0, 0.0);
-    }
-}
-
-static JSValue js_vector2_get_x(JSContext *ctx, JSValueConst this_val)
-{
-    JSVector2 *v = JS_VALUE_GET_PTR(this_val);
-    return JS_NewFloat64(ctx, v->data.x);
-}
-
-static JSValue js_vector2_get_y(JSContext *ctx, JSValueConst this_val)
-{
-    JSVector2 *v = JS_VALUE_GET_PTR(this_val);
-    return JS_NewFloat64(ctx, v->data.y);
-}
-
-static JSValue js_rect2_get_position(JSContext *ctx, JSValueConst this_val)
-{
-    JSRect2 *r = JS_VALUE_GET_PTR(this_val);
-    return JS_NewVector2(ctx, r->data.position.x, r->data.position.y);
-}
-
-static JSValue js_rect2_get_size(JSContext *ctx, JSValueConst this_val)
-{
-    JSRect2 *r = JS_VALUE_GET_PTR(this_val);
-    double size_x = r->data.end.x - r->data.position.x;
-    double size_y = r->data.end.y - r->data.position.y;
-    return JS_NewVector2(ctx, size_x, size_y);
-}
-
-static JSValue js_rect2_get_end(JSContext *ctx, JSValueConst this_val)
-{
-    JSRect2 *r = JS_VALUE_GET_PTR(this_val);
-    return JS_NewVector2(ctx, r->data.end.x, r->data.end.y);
-}
-
-//static 
-
-static inline JSVector2Data js_vector2_add(JSVector2Data a, JSVector2Data b) {
-    return (JSVector2Data) {
-        .x = a.x + b.x, 
-        .y = a.y + b.y
-    };
-}
-
-static inline JSVector2Data js_vector2_sub(JSVector2Data a, JSVector2Data b) {
-    return (JSVector2Data) {
-        .x = a.x - b.x, 
-        .y = a.y - b.y
-    };
-}
-
-static inline JSVector2Data js_vector2_mult(JSVector2Data a, JSVector2Data b) {
-    return (JSVector2Data) {
-        .x = a.x * b.x, 
-        .y = a.y * b.y
-    };
-}
-
-static inline JSVector2Data js_vector2_mult_scalar(JSVector2Data a, double b) {
-    return (JSVector2Data) {
-        .x = a.x * b, 
-        .y = a.y * b
-    };
-}
-
-static inline JSVector2Data js_vector2_div(JSVector2Data a, JSVector2Data b) {
-    return (JSVector2Data) {
-        .x = a.x / b.x, 
-        .y = a.y / b.x
-    };
-}
-
-static inline JSVector2Data js_vector2_div_scalar(JSVector2Data a, double b) {
-    return (JSVector2Data) {
-        .x = a.x / b, 
-        .y = a.y / b
-    };
-}
-
-// static inline double js_vector2_angle(JSVector2Data a) {
-//     return atan(a.y, a.x);
-// }
-
-static JSValue js_vector2_add_bind(JSContext *ctx, JSValueConst this_val,
-                                int argc, JSValueConst *argv)
-{
-    JSVector2 *v0 = JS_VALUE_GET_PTR(this_val);
-    JSVector2 *v1 = JS_VALUE_GET_PTR(argv[0]);
-    JSVector2Data res = js_vector2_add(v0->data, v1->data);
-    return JS_NewVector2(ctx, res.x, res.y);
-}
-
-static JSClassShortDef const js_godot_class_def[] = {
-    { JS_ATOM_Vector2, NULL, NULL },
-    { JS_ATOM_Rect2, NULL, NULL }
-};
-
-static const JSCFunctionListEntry js_vector2_proto_funcs[] = {
-    JS_CGETSET_DEF("x", js_vector2_get_x, NULL ),
-    JS_CGETSET_DEF("y", js_vector2_get_y, NULL ),
-    JS_CFUNC_DEF("add", 2, js_vector2_add_bind ),
-    // JS_CFUNC_DEF("toFixed", 1, js_number_toFixed ),
-    // JS_CFUNC_DEF("toPrecision", 1, js_number_toPrecision ),
-    // JS_CFUNC_MAGIC_DEF("toString", 1, js_number_toString, 0 ),
-    // JS_CFUNC_MAGIC_DEF("toLocaleString", 0, js_number_toString, 1 ),
-    // JS_CFUNC_DEF("valueOf", 0, js_number_valueOf ),
-};
-
-static const JSCFunctionListEntry js_rect2_proto_funcs[] = {
-    JS_CGETSET_DEF("position", js_rect2_get_position, NULL ),
-    JS_CGETSET_DEF("size", js_rect2_get_size, NULL ),
-    JS_CGETSET_DEF("end", js_rect2_get_end, NULL ),
-};
-
-void JS_AddIntrinsicGodotPrimitives(JSContext *ctx) {
-    JSRuntime *rt;
-
-    rt = ctx->rt;
-
-    init_class_range(rt, js_godot_class_def, JS_CLASS_VECTOR2,
-                        countof(js_godot_class_def));
-
-    /* Vector2 */
-    ctx->class_proto[JS_CLASS_VECTOR2] = JS_NewObjectProtoClass(ctx, ctx->class_proto[JS_CLASS_OBJECT], JS_CLASS_VECTOR2);
-    JS_SetPropertyFunctionList(ctx, ctx->class_proto[JS_CLASS_VECTOR2],
-                            js_vector2_proto_funcs,
-                            countof(js_vector2_proto_funcs));
-    JS_NewGlobalCConstructor(ctx, "Vector2", js_vector2_constructor, 2,
-                                        ctx->class_proto[JS_CLASS_VECTOR2]);
-
-    /* Rect2 */
-    ctx->class_proto[JS_CLASS_RECT2] = JS_NewObjectProtoClass(ctx, ctx->class_proto[JS_CLASS_OBJECT], JS_CLASS_RECT2);
-    JS_SetPropertyFunctionList(ctx, ctx->class_proto[JS_CLASS_RECT2],
-                            js_rect2_proto_funcs,
-                            countof(js_rect2_proto_funcs));
-    JS_NewGlobalCConstructor(ctx, "Rect2", js_rect2_constructor, 4,
-                                        ctx->class_proto[JS_CLASS_RECT2]);
-
 }
 
 /* URI handling */

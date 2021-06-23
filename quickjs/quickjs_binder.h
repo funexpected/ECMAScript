@@ -11,6 +11,10 @@
 #include "core/os/memory.h"
 #include "core/os/thread.h"
 #include "core/resource.h"
+#ifdef CONFIG_GODOT_INTRINSICS
+#include "core/math/vector2.h"
+#include "core/math/rect2.h"
+#endif
 #include "quickjs_builtin_binder.h"
 #define JS_HIDDEN_SYMBOL(x) ("\xFF" x)
 #define BINDING_DATA_FROM_JS(ctx, p_val) (ECMAScriptGCHandler *)JS_GetOpaque((p_val), QuickJSBinder::get_origin_class_id((ctx)))
@@ -269,11 +273,24 @@ public:
 		JS_ToIndex(ctx, &i, p_val);
 		return i;
 	}
+#ifdef CONFIG_GODOT_INTRINSICS
 	_FORCE_INLINE_ static Vector2 js_to_vector2(JSContext *ctx, const JSValueConst &p_val) {
-		Vector2 ret;
-		JS_ToVector2(ctx, p_val);
-		return ret;
+		JSVector2 *v = (JSVector2*)JS_VALUE_GET_PTR(p_val);
+	#ifdef REAL_T_IS_DOUBLE
+		return {v->data.x, v->data.y};
+	#else
+		return {(float)v->data.x, (float)v->data.y};
+	#endif
 	}
+	_FORCE_INLINE_ static Rect2 js_to_rect2(JSContext *ctx, const JSValueConst &p_val) {
+		JSRect2 *r = (JSRect2 *)JS_VALUE_GET_PTR(p_val);
+	#ifdef REAL_T_IS_DOUBLE
+		return {r->data.position.x, r->data.position.y, r->data.size.x, r->data.size.y};
+	#else
+		return {(float)r->data.position.x, (float)r->data.position.y, (float)r->data.size.x, (float)r->data.size.y};
+	#endif
+	}
+#endif
 	_FORCE_INLINE_ static JSValue to_js_number(JSContext *ctx, real_t p_val) {
 		return JS_NewFloat64(ctx, double(p_val));
 	}
