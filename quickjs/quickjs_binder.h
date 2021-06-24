@@ -11,10 +11,13 @@
 #include "core/os/memory.h"
 #include "core/os/thread.h"
 #include "core/resource.h"
+
 #ifdef CONFIG_GODOT_INTRINSICS
 #include "core/math/vector2.h"
 #include "core/math/rect2.h"
+#include "../godot_intrinsics/godot_intrinsic_types.h"
 #endif
+
 #include "quickjs_builtin_binder.h"
 #define JS_HIDDEN_SYMBOL(x) ("\xFF" x)
 #define BINDING_DATA_FROM_JS(ctx, p_val) (ECMAScriptGCHandler *)JS_GetOpaque((p_val), QuickJSBinder::get_origin_class_id((ctx)))

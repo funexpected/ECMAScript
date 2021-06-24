@@ -1,3 +1,4 @@
+#define CONFIG_GODOT_INTRINSICS
 /*
  * QuickJS Javascript Engine
  *
@@ -93,9 +94,11 @@ enum {
     /* any larger tag is FLOAT64 if JS_NAN_BOXING */
 };
 
+//#ifndef CONFIG_GODOT_INTRINSICS
 typedef struct JSRefCountHeader {
     int ref_count;
 } JSRefCountHeader;
+//#endif
 
 #define JS_FLOAT64_NAN NAN
 
@@ -315,9 +318,6 @@ static inline JS_BOOL JS_VALUE_IS_NAN(JSValue v)
 /* don't include the stack frames before this eval in the Error() backtraces */
 #define JS_EVAL_FLAG_BACKTRACE_BARRIER (1 << 6)
 
-#ifdef CONFIG_GODOT_INTRINSICS
-#include "godot_intrinsics/godot_intrinsic_types.h"
-#endif
 
 typedef JSValue JSCFunction(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 typedef JSValue JSCFunctionMagic(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic);
