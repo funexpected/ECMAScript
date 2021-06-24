@@ -384,8 +384,10 @@ void JS_AddIntrinsicBigDecimal(JSContext *ctx);
 void JS_AddIntrinsicOperators(JSContext *ctx);
 /* enable "use math" */
 void JS_EnableBignumExt(JSContext *ctx, JS_BOOL enable);
-/* enable godot extention */
+
+#ifdef CONFIG_GODOT_INTRINSICS
 void JS_AddIntrinsicGodotPrimitives(JSContext *ctx);
+#endif
 
 JSValue js_string_codePointRange(JSContext *ctx, JSValueConst this_val,
                                  int argc, JSValueConst *argv);

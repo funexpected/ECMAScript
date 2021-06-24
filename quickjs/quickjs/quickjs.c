@@ -904,9 +904,10 @@ struct JSObject {
         struct JSAsyncFunctionData *async_function_data; /* JS_CLASS_ASYNC_FUNCTION_RESOLVE, JS_CLASS_ASYNC_FUNCTION_REJECT */
         struct JSAsyncFromSyncIteratorData *async_from_sync_iterator_data; /* JS_CLASS_ASYNC_FROM_SYNC_ITERATOR */
         struct JSAsyncGeneratorData *async_generator_data; /* JS_CLASS_ASYNC_GENERATOR */
+#ifdef CONFIG_GODOT_INTRINSICS        
         struct JSVector2 *vector2; /* JS_CLASS_VECTOR2 */
         struct JSRect2 *rect2; /* JS_CLASS_RECT2 */
-
+#endif
         struct { /* JS_CLASS_BYTECODE_FUNCTION: 12/24 bytes */
             /* also used by JS_CLASS_GENERATOR_FUNCTION, JS_CLASS_ASYNC_FUNCTION and JS_CLASS_ASYNC_GENERATOR_FUNCTION */
             struct JSFunctionBytecode *function_bytecode;
@@ -2170,9 +2171,11 @@ JSContext *JS_NewContext(JSRuntime *rt)
     JS_AddIntrinsicMapSet(ctx);
     JS_AddIntrinsicTypedArrays(ctx);
     JS_AddIntrinsicPromise(ctx);
-    JS_AddIntrinsicGodotPrimitives(ctx);
 #ifdef CONFIG_BIGNUM
     JS_AddIntrinsicBigInt(ctx);
+#endif
+#ifdef CONFIG_GODOT_INTRINSICS
+    JS_AddIntrinsicGodotPrimitives(ctx);
 #endif
     return ctx;
 }
@@ -6147,8 +6150,10 @@ void JS_ComputeMemoryUsage(JSRuntime *rt, JSMemoryUsage *s)
         case JS_CLASS_ASYNC_FUNCTION_REJECT:     /* u.async_function_data */
         case JS_CLASS_ASYNC_FROM_SYNC_ITERATOR:  /* u.async_from_sync_iterator_data */
         case JS_CLASS_ASYNC_GENERATOR:   /* u.async_generator_data */
+#ifdef CONFIG_GODOT_INTRINSICS
         case JS_CLASS_VECTOR2:           /* u.vector2 */
         case JS_CLASS_RECT2:             /* u.rect2 */
+#endif
             /* TODO */
         default:
             /* XXX: class definition should have an opaque block size */
@@ -6888,12 +6893,14 @@ static JSValueConst JS_GetPrototypePrimitive(JSContext *ctx, JSValueConst val)
         val = ctx->class_proto[JS_CLASS_BIG_DECIMAL];
         break;
 #endif
+#ifdef CONFIG_GODOT_INTRINSICS
     case JS_TAG_VECTOR2:
          val = ctx->class_proto[JS_CLASS_VECTOR2];
          break;
     case JS_TAG_RECT2:
          val = ctx->class_proto[JS_CLASS_RECT2];
          break;
+#endif
     case JS_TAG_INT:
     case JS_TAG_FLOAT64:
         val = ctx->class_proto[JS_CLASS_NUMBER];
@@ -11561,6 +11568,7 @@ JSValue JS_ToStringInternal(JSContext *ctx, JSValueConst val, BOOL is_ToProperty
     case JS_TAG_BIG_DECIMAL:
         return ctx->rt->bigdecimal_ops.to_string(ctx, val);
 #endif
+#ifdef CONFIG_GODOT_INTRINSICS
     case JS_TAG_VECTOR2:
     {
         JSVector2 *v = JS_VALUE_GET_PTR(val);
@@ -11576,7 +11584,7 @@ JSValue JS_ToStringInternal(JSContext *ctx, JSValueConst val, BOOL is_ToProperty
         str = buf;
         goto new_string;
     }
-
+#endif
     default:
         str = "[unsupported type]";
     new_string:

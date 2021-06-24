@@ -283,8 +283,10 @@ Variant QuickJSBinder::var_to_variant(JSContext *ctx, JSValue p_val) {
 			return Variant(real_t(JS_VALUE_GET_FLOAT64(p_val)));
 		case JS_TAG_STRING:
 			return js_to_string(ctx, p_val);
+#ifdef CONFIG_GODOT_INTRINSICS
 		case JS_TAG_VECTOR2:
  			return js_to_vector2(ctx, p_val);
+#endif
 		case JS_TAG_OBJECT: {
 			if (JS_VALUE_GET_PTR(p_val) == NULL) {
 				return Variant();
