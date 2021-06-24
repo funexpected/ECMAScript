@@ -1,10 +1,8 @@
 #ifndef FREE_LIST_ALLOC_H
 #define FREE_LIST_ALLOC_H
 
-#include <assert.h>
-#include <stddef.h>
-#include <stdlib.h>
 #include <pthread.h>
+#include <stdlib.h>
 
 typedef struct ListItem {
     struct ListItem* next; 

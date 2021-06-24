@@ -49,6 +49,10 @@
 #include "libbf.h"
 #endif
 
+#ifdef CONFIG_GODOT_INTRINSICS
+#include "../../godot_intrinsics/godot_intrinsic_types.h"
+#endif
+
 #define OPTIMIZE         1
 #define SHORT_OPCODES    1
 #if defined(EMSCRIPTEN)
@@ -47211,6 +47215,11 @@ static const JSCFunctionListEntry js_rect2_proto_funcs[] = {
     JS_CGETSET_DEF("position", js_rect2_get_position, NULL ),
     JS_CGETSET_DEF("size", js_rect2_get_size, NULL ),
     JS_CGETSET_DEF("end", js_rect2_get_end, NULL ),
+    JS_CFUNC_DEF("contains", 2, js_rect2_contains ),
+    JS_CFUNC_DEF("expand", 2, js_rect2_expand ),
+    JS_CFUNC_DEF("intersects", 2, js_rect2_intersects ),
+    JS_CFUNC_DEF("move", 2, js_rect2_move ),
+    JS_CFUNC_DEF("resize", 2, js_rect2_resize ),
 };
 
 void JS_AddIntrinsicGodotPrimitives(JSContext *ctx) {

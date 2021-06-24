@@ -1,5 +1,7 @@
 #include "free_list_alloc.h"
 
+#include <assert.h>
+#include <stddef.h>
 
 void* alloc(FreeListAllocator* allocator) {
     assert(allocator != NULL);
