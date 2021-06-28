@@ -121,9 +121,16 @@ JSValue js_rect2_intersects(JSContext *ctx, JSValueConst this_val, int argc, JSV
 }
 
 static bool js_rect2_intersects_internal(const JSRect2Data* rect1, const JSRect2Data* rect2) {
-    return 
-        js_rect2_contains_internal(rect1, &rect2->position) || 
-        js_rect2_contains_internal(rect2, &rect1->position);
+    if (rect1->position.x >= (rect2->position.x + rect2->size.x))
+        return false;
+    if ((rect1->position.x + rect1->size.x) <= rect2->position.x)
+        return false;
+    if (rect1->position.y >= (rect2->position.y + rect2->size.y))
+        return false;
+    if ((rect1->position.y + rect1->size.y) <= rect2->position.y)
+        return false;
+
+    return true;
 }
 
 JSValue js_rect2_move(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
